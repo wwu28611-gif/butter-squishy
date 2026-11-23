@@ -1220,12 +1220,30 @@
     var r = stage.getBoundingClientRect();
     if (r.width < 2 || r.height < 2 || !renderer) return;
     renderer.setSize(r.width, r.height, false);
-    var aspect = r.width / r.height;
+    // keep the table clear of the tool bar: render the scene into the area above it
+    var tb = document.getElementById('tools');
+    var reserve = Math.min(r.height * 0.4, ((tb && tb.offsetHeight) || 60) + 18);
+    var vh = r.height - reserve;
+    var aspect = r.width / vh;
     camera.aspect = aspect;
+    camera.setViewOffset(r.width, vh, 0, 0, r.width, r.height);
     var dist = Math.max(7.2, 2.5 / (Math.tan(camera.fov * Math.PI / 360) * aspect));
-    camera.position.set(0, 0.82 * dist, 0.2 + 0.57 * dist);
+    var cs = [[-TABLE_X, TABLE_Z], [TABLE_X, TABLE_Z], [-TABLE_X, -TABLE_Z], [TABLE_X, -TABLE_Z]], pv = new THREE.Vector3();
+    for (var it = 0; it < 40; it++) {
+      camera.position.set(0, 0.82 * dist, 0.2 + 0.57 * dist);
+      camera.lookAt(0, 0, 0.2);
+      camera.updateMatrixWorld(true);
+      camera.clearViewOffset();
+      var ok = true;
+      for (var k = 0; k < 4; k++) {
+        pv.set(cs[k][0], 0, cs[k][1]).project(camera);
+        if (pv.y < -0.97 || pv.y > 1.05 || Math.abs(pv.x) > 1.02) { ok = false; break; }
+      }
+      camera.setViewOffset(r.width, vh, 0, 0, r.width, r.height);
+      if (ok) break;
+      dist *= 1.04;
+    }
     camBase = camera.position.clone();
-    camera.lookAt(0, 0, 0.2);
     camera.updateMatrixWorld(true);
     if (G && G.gun) { G.wpos = camera.localToWorld(new THREE.Vector3(0.42, -0.62, -2.3)); showWeapons(); }
     camera.updateProjectionMatrix();
